@@ -55,20 +55,21 @@ require("ts-forge").setup({
 
 ## Commands
 
-| Command              | Description                                        |
-| -------------------- | -------------------------------------------------- |
-| `:TSInstall`         | Install all missing `ensure_installed` parsers     |
-| `:TSInstall lua cpp` | Install specific parsers (tab completion supported) |
-| `:TSUpdate`          | Update all installed parsers to pinned revisions   |
+| Command                 | Description                                         |
+| ----------------------- | --------------------------------------------------- |
+| `:TSInstall`            | Install all missing `ensure_installed` parsers      |
+| `:TSInstall lua cpp`    | Install specific parsers (tab completion supported) |
+| `:TSUpdate`             | Update all installed parsers to pinned revisions    |
+| `:checkhealth ts-forge` | Check requirements, installed parsers, and queries  |
 
 ## How it works
 
 1. **Fetch** — shallow-clones a single commit from the grammar repo (`git fetch --depth 1`)
 2. **Build** — compiles with `tree-sitter build` (handles C/C++ scanners, platform flags automatically)
-3. **Queries** — copies `.scm` query files from the grammar repo
+3. **Queries** — copies `.scm` query files from the grammar repo. For parsers bundled with Neovim (c, lua, vim, vimdoc, query, markdown, markdown_inline), queries are skipped to avoid shadowing Neovim's higher-quality bundled queries.
 4. **Track** — records the installed revision to skip reinstalls
 
-Parsers and queries are installed to `<install_dir>/parser/` and `<install_dir>/queries/` respectively. Dependencies are resolved automatically (e.g. `cpp` installs `c` first).
+Parsers and queries are installed to `<install_dir>/parser/` and `<install_dir>/queries/` respectively. Dependencies are resolved automatically (e.g. `cpp` installs `c` first). All operations run asynchronously.
 
 ## Available parsers
 

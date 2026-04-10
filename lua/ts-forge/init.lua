@@ -282,6 +282,7 @@ end
 
 function M.setup(opts)
     config = vim.tbl_deep_extend("force", defaults, opts or {})
+    M._config = config
 
     local missing = M.get_missing()
     if #missing > 0 then
