@@ -1,3 +1,11 @@
+-------------------------------------------------------------------------------
+-- A Neovim plugin that fixes Tree-sitter issues.
+--
+-- Author: Andrey Ugolnik
+-- License: MIT
+-- GitHub: https://github.com/reybits/
+--
+
 local M = {}
 
 function M.check()
@@ -11,7 +19,9 @@ function M.check()
     if ts_abi and ts_abi >= 13 then
         health.ok(string.format("Neovim tree-sitter ABI version %d (>= 13)", ts_abi))
     else
-        health.error(string.format("Neovim tree-sitter ABI version %s (need >= 13)", tostring(ts_abi)))
+        health.error(
+            string.format("Neovim tree-sitter ABI version %s (need >= 13)", tostring(ts_abi))
+        )
     end
 
     for _, tool in ipairs({ "tree-sitter", "git", "cc" }) do
@@ -47,13 +57,20 @@ function M.check()
     -- Installed parsers
     health.start("Installed parsers")
 
-    local langs = {}
+    -- Collect all known languages: registry + ensure_installed (which may include bundled)
+    local lang_set = {}
     for lang in pairs(forge.parsers) do
-        table.insert(langs, lang)
+        lang_set[lang] = true
     end
+    local cfg = forge._config or {}
+    for _, lang in ipairs(cfg.ensure_installed or {}) do
+        lang_set[lang] = true
+    end
+    local langs = vim.tbl_keys(lang_set)
     table.sort(langs)
 
     local installed_count = 0
+    local bundled_count = 0
     local outdated_count = 0
     local missing_count = 0
 
@@ -61,24 +78,44 @@ function M.check()
         local info = forge.parsers[lang]
         local so = parser_dir .. "/" .. lang .. ".so"
 
-        if vim.fn.filereadable(so) == 1 then
+        -- Check if Neovim bundles this parser (available outside our install_dir)
+        local bundled = false
+        for _, path in ipairs(vim.api.nvim_get_runtime_file("parser/" .. lang .. ".so", false)) do
+            if not path:find(install_dir, 1, true) then
+                bundled = true
+                break
+            end
+        end
+
+        if bundled and not info then
+            -- Bundled parser not in our registry — fully managed by Neovim
+            bundled_count = bundled_count + 1
+            health.ok(lang .. " (bundled)")
+        elseif vim.fn.filereadable(so) == 1 then
             installed_count = installed_count + 1
 
-            -- Check revision
-            local rev_path = install_dir .. "/parser-info/" .. lang .. ".revision"
-            local current_rev = vim.fn.filereadable(rev_path) == 1
-                and vim.fn.readfile(rev_path)[1] or nil
-
-            -- Check queries
-            local has_queries = #vim.api.nvim_get_runtime_file("queries/" .. lang .. "/highlights.scm", false) > 0
-
             local status = {}
-            if current_rev ~= info.rev then
+
+            -- Read revision file (used for both outdated and query checks)
+            local rev_path = install_dir .. "/parser-info/" .. lang .. ".revision"
+            local rev_lines = vim.fn.filereadable(rev_path) == 1 and vim.fn.readfile(rev_path) or {}
+            local had_queries = (rev_lines[2] or "") ~= "queries=false"
+
+            -- Check revision (only for parsers in the registry)
+            if info and rev_lines[1] ~= info.rev then
                 table.insert(status, "outdated")
                 outdated_count = outdated_count + 1
             end
-            if not has_queries then
-                table.insert(status, "no queries")
+
+            -- Check queries (only warn if install recorded that queries were copied)
+            if had_queries then
+                local has_queries = #vim.api.nvim_get_runtime_file(
+                    "queries/" .. lang .. "/highlights.scm",
+                    false
+                ) > 0
+                if not has_queries then
+                    table.insert(status, "no queries")
+                end
             end
 
             if #status > 0 then
@@ -94,10 +131,15 @@ function M.check()
 
     -- Summary
     health.start("Summary")
-    health.info(string.format(
-        "%d installed, %d outdated, %d not installed",
-        installed_count, outdated_count, missing_count
-    ))
+    health.info(
+        string.format(
+            "%d installed, %d bundled, %d outdated, %d not installed",
+            installed_count,
+            bundled_count,
+            outdated_count,
+            missing_count
+        )
+    )
 end
 
 return M
