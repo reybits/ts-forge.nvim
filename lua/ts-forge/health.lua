@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- A Neovim plugin that fixes Tree-sitter issues.
+-- Minimal tree-sitter parser manager for Neovim 0.12+.
 --
 -- Author: Andrey Ugolnik
 -- License: MIT

@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- A Neovim plugin that fixes Tree-sitter issues.
+-- Minimal tree-sitter parser manager for Neovim 0.12+.
 --
 -- Author: Andrey Ugolnik
 -- License: MIT
@@ -54,7 +54,10 @@ M.parsers = {
         url = "https://github.com/tree-sitter-grammars/tree-sitter-make",
         rev = "70613f3d812cbabbd7f38d104d60a409c4008b43",
     },
-    python = { url = "https://github.com/tree-sitter/tree-sitter-python", rev = "v0.25.0" },
+    python = {
+        url = "https://github.com/tree-sitter/tree-sitter-python",
+        rev = "v0.25.0",
+    },
     regex = {
         url = "https://github.com/tree-sitter/tree-sitter-regex",
         rev = "b2ac15e27fce703d2f37a79ccd94a5c0cbe9720b",
@@ -329,21 +332,20 @@ M.update = async(function()
     end
     installing = true
 
-    local outdated = {}
-    for lang, info in pairs(M.parsers) do
-        local saved_rev = read_revision(lang)
-        if not is_complete(lang) and vim.fn.filereadable(parser_path(lang)) == 1 then
-            table.insert(outdated, lang)
+    local langs = {}
+    for lang in pairs(M.parsers) do
+        if not is_complete(lang) then
+            table.insert(langs, lang)
         end
     end
 
-    if #outdated == 0 then
+    if #langs == 0 then
         log("All parsers are up to date")
         installing = false
         return
     end
 
-    install_langs(outdated)
+    install_langs(langs)
     installing = false
 end)
 
