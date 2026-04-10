@@ -166,14 +166,26 @@ local function install_one(lang)
         return false
     end
 
-    -- Copy query files from the grammar repo
-    local src_queries = grammar_dir .. "/queries"
-    if vim.fn.isdirectory(src_queries) == 1 then
-        local dst_queries = config.install_dir .. "/queries/" .. lang
-        local files = vim.fn.glob(src_queries .. "/*.scm", false, true)
-        for _, file in ipairs(files) do
-            local name = vim.fn.fnamemodify(file, ":t")
-            vim.fn.writefile(vim.fn.readfile(file), dst_queries .. "/" .. name)
+    -- Skip query installation for languages bundled with Neovim —
+    -- their runtime queries are higher quality and actively maintained.
+    local is_bundled = false
+    for _, path in ipairs(vim.api.nvim_get_runtime_file("queries/" .. lang .. "/highlights.scm", false)) do
+        if path:find(vim.env.VIMRUNTIME, 1, true) then
+            is_bundled = true
+            break
+        end
+    end
+
+    if not is_bundled then
+        local src_queries = grammar_dir .. "/queries"
+        if vim.fn.isdirectory(src_queries) == 1 then
+            local dst_queries = config.install_dir .. "/queries/" .. lang
+            vim.fn.mkdir(dst_queries, "p")
+            local files = vim.fn.glob(src_queries .. "/*.scm", false, true)
+            for _, file in ipairs(files) do
+                local name = vim.fn.fnamemodify(file, ":t")
+                vim.fn.writefile(vim.fn.readfile(file), dst_queries .. "/" .. name)
+            end
         end
     end
 
