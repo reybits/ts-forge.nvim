@@ -11,6 +11,7 @@ Compiles parsers from upstream grammar repos using the `tree-sitter` CLI, copies
 - Bundled parser detection — prefers Neovim's built-in parsers and queries
 - Monorepo support (e.g. typescript/tsx share a repo)
 - Dependency resolution (e.g. cpp installs c first)
+- Query inheritance — automatically prepends `; inherits:` directives for derived languages
 - Revision pinning with integrity checks
 - Cross-platform — macOS (clang) and Linux (gcc)
 - `:checkhealth` support
@@ -78,7 +79,7 @@ require("ts-forge").setup({
 
 1. **Fetch** — shallow-clones a single commit from the grammar repo
 2. **Build** — compiles with `tree-sitter build` (handles C/C++ scanners and platform flags)
-3. **Queries** — copies `.scm` query files from the grammar repo to the install directory. For parsers bundled with Neovim, both the parser and queries are skipped entirely.
+3. **Queries** — copies `.scm` query files from the grammar repo to the install directory. For parsers that declare `inherits`, the `; inherits: <lang>` directive is prepended automatically. For parsers bundled with Neovim, both the parser and queries are skipped entirely.
 4. **Track** — records the installed revision and query status to skip unnecessary reinstalls
 
 Install state is tracked per-parser in `<install_dir>/parser-info/<lang>.revision`. This file records the pinned revision and whether queries were copied, enabling integrity checks: if the `.so` or query files are deleted, the next install restores them.
@@ -108,13 +109,24 @@ tsx = {
 },
 ```
 
-For parsers whose queries use `; inherits:` from another language, add `requires` so the dependency is installed first:
+For parsers that depend on another parser at build time, add `requires`:
 
 ```lua
 cpp = {
     url = "https://github.com/tree-sitter/tree-sitter-cpp",
     rev = "...",
     requires = { "c" },
+},
+```
+
+For parsers whose queries inherit from another language, add `inherits`. This prepends the `; inherits: <lang>` directive to all copied `.scm` files so Neovim applies the parent language's query rules:
+
+```lua
+cpp = {
+    url = "https://github.com/tree-sitter/tree-sitter-cpp",
+    rev = "...",
+    requires = { "c" },
+    inherits = { "c" },
 },
 ```
 

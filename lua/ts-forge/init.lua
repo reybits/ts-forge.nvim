@@ -8,7 +8,7 @@
 
 local M = {}
 
---- Parser registry: lang -> { url, rev, location?, requires? }
+--- Parser registry: lang -> { url, rev, location?, requires?, inherits? }
 --- Parsers bundled with Neovim (c, lua, markdown, markdown_inline, query, vim, vimdoc)
 --- are not listed — they are detected automatically and preferred over compiled ones.
 --- Revisions sourced from nvim-treesitter/nvim-treesitter (main branch).
@@ -25,6 +25,7 @@ M.parsers = {
         url = "https://github.com/tree-sitter/tree-sitter-cpp",
         rev = "8b5b49eb196bec7040441bee33b2c9a4838d6967",
         requires = { "c" },
+        inherits = { "c" },
     },
     css = {
         url = "https://github.com/tree-sitter/tree-sitter-css",
@@ -257,10 +258,31 @@ local function install_one(lang)
     if vim.fn.isdirectory(src_queries) == 1 then
         local dst_queries = config.install_dir .. "/queries/" .. lang
         vim.fn.mkdir(dst_queries, "p")
+        local inherits_line = nil
+        if info.inherits and #info.inherits > 0 then
+            inherits_line = "; inherits: " .. table.concat(info.inherits, ",")
+        end
+
         local files = vim.fn.glob(src_queries .. "/*.scm", false, true)
         for _, file in ipairs(files) do
             local name = vim.fn.fnamemodify(file, ":t")
-            vim.fn.writefile(vim.fn.readfile(file), dst_queries .. "/" .. name)
+            local lines = vim.fn.readfile(file)
+            if inherits_line then
+                local already_has = false
+                for _, line in ipairs(lines) do
+                    if not line:match("^;") then
+                        break
+                    end
+                    if line:match("^;+%s*inherits") then
+                        already_has = true
+                        break
+                    end
+                end
+                if not already_has then
+                    table.insert(lines, 1, inherits_line)
+                end
+            end
+            vim.fn.writefile(lines, dst_queries .. "/" .. name)
         end
         queries_copied = #files > 0
     end
