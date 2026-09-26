@@ -73,6 +73,11 @@ M.parsers = {
         rev = "75b3874edb2dc714fb1fd77a32013d0f8699989f",
         location = "typescript",
     },
+    xml = {
+        url = "https://github.com/tree-sitter-grammars/tree-sitter-xml",
+        rev = "0d9a8099c963ed53e183425c1b47fa2622c8eaf7",
+        location = "xml",
+    },
     yaml = {
         url = "https://github.com/tree-sitter-grammars/tree-sitter-yaml",
         rev = "4463985dfccc640f3d6991e3396a2047610cf5f8",
@@ -248,14 +253,24 @@ local function install_one(lang)
         return false
     end
 
-    -- Copy query files from the grammar repo.
-    -- Monorepos may keep queries at <grammar_dir>/queries/ or <repo_root>/queries/
+    -- Copy query files from the grammar repo. Query layouts we handle:
+    --   <grammar_dir>/queries/       - grammar keeps its own queries
+    --   <repo>/queries/<location>/   - tree-sitter-grammars monorepo style
+    --   <repo>/queries/              - shared queries at repo root
     local queries_copied = false
-    local src_queries = grammar_dir .. "/queries"
-    if vim.fn.isdirectory(src_queries) == 0 and info.location then
-        src_queries = tmpdir .. "/queries"
+    local src_queries = nil
+    local candidates = { grammar_dir .. "/queries" }
+    if info.location then
+        table.insert(candidates, tmpdir .. "/queries/" .. info.location)
+        table.insert(candidates, tmpdir .. "/queries")
     end
-    if vim.fn.isdirectory(src_queries) == 1 then
+    for _, path in ipairs(candidates) do
+        if vim.fn.isdirectory(path) == 1 then
+            src_queries = path
+            break
+        end
+    end
+    if src_queries then
         local dst_queries = config.install_dir .. "/queries/" .. lang
         vim.fn.mkdir(dst_queries, "p")
         local inherits_line = nil
