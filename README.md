@@ -2,7 +2,7 @@
 
 Minimal tree-sitter parser manager for Neovim 0.12+. No plugin dependencies.
 
-Compiles parsers from upstream grammar repos using the `tree-sitter` CLI, copies query files, and tracks revisions. Parsers bundled with Neovim are detected automatically and never overwritten.
+Compiles parsers from upstream grammar repos using the `tree-sitter` CLI, copies query files, and tracks revisions. Parsers bundled with Neovim are detected automatically and never overwritten. Ships supplementary query files where the upstream grammar is incomplete, so treesitter features (folding, indent, injections) work out of the box.
 
 ## Features
 
@@ -12,6 +12,7 @@ Compiles parsers from upstream grammar repos using the `tree-sitter` CLI, copies
 - Monorepo support (e.g. typescript/tsx share a repo)
 - Dependency resolution (e.g. cpp installs c first)
 - Query inheritance — automatically prepends `; inherits:` directives for derived languages
+- Overlay queries — bundles supplementary `.scm` files for parsers whose upstream ships only highlights
 - Revision pinning with integrity checks
 - Cross-platform — macOS (clang) and Linux (gcc)
 - `:checkhealth` support
@@ -87,6 +88,16 @@ Install state is tracked per-parser in `<install_dir>/parser-info/<lang>.revisio
 ## Bundled parsers
 
 Neovim 0.12 ships with parsers and queries for: **c**, **lua**, **markdown**, **markdown\_inline**, **query**, **vim**, **vimdoc**. These are detected at runtime and preferred over compiled versions. You can safely include them in `ensure_installed` — they will be skipped.
+
+## Overlay queries
+
+Some upstream grammars ship only `highlights.scm`, leaving `folds.scm`, `indents.scm`, `injections.scm`, or `locals.scm` for editor integrations to provide. Ts-forge bundles a small overlay of such files under its own `queries/<lang>/` directory. Because the plugin's directory is on Neovim's runtimepath, the overlay merges with the copied upstream queries automatically — no configuration required.
+
+Overlay files live in the plugin, not in `<install_dir>`, and are versioned with the plugin (not pinned to a parser revision). Currently shipped:
+
+| Language | File        | Reason                                                          |
+| -------- | ----------- | --------------------------------------------------------------- |
+| `xml`    | `folds.scm` | `tree-sitter-grammars/tree-sitter-xml` ships no folding queries |
 
 ## Adding a parser
 
